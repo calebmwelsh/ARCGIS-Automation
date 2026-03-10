@@ -80,4 +80,3 @@ The project follows a **3-Layer Architecture** to ensure reliability and maintai
 > **Note:** This branch is dedicated to Hamilton County, IN, which is entirely within Indiana — no state filter is needed. Future branches or configuration profiles may extend support to neighboring counties (Boone, Madison, Tipton, etc.) or other states as needed.
 
 ---
-*Created with ❤️ by Antigravity*
