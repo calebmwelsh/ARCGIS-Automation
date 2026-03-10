@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">ArcGIS Data Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Palette: Deep Slate / Green Tint for ArcGIS */
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #064e3b 100%);
+            --card-bg: rgba(30, 41, 59, 0.75);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #10b981;
+            /* Emerald 500 */
+            --accent-hover: #059669;
+            /* Emerald 600 */
+            --accent-glow: rgba(16, 185, 129, 0.4);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --input-bg: rgba(15, 23, 42, 0.6);
+            --input-border: rgba(148, 163, 184, 0.2);
+            --input-focus: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.6s ease-out;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: var(--text-main);
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .full-width {
+            grid-column: span 2;
+        }
+
+        .section-title {
+            grid-column: span 2;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 8px;
+            margin-top: 16px;
+            margin-bottom: -8px;
+        }
+
+        @media (max-width: 640px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .full-width,
+            .section-title {
+                grid-column: span 1;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            appearance: none;
+        }
+
+        select {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        select option {
+            background-color: #1e293b;
+            color: white;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--input-focus);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+            background-color: rgba(30, 41, 59, 0.9);
+        }
+
+        input::placeholder {
+            color: rgba(148, 163, 184, 0.5);
+        }
+
+        .actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 40px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--input-border);
+        }
+
+        .btn-secondary:hover {
+            color: var(--text-main);
+            border-color: var(--text-secondary);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-run {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-run:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        #status-area {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 12px;
+            background-color: rgba(15, 23, 42, 0.5);
+            display: none;
+            border-left: 4px solid;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: all 0.3s ease;
+        }
+
+        .status-running {
+            border-color: var(--warning);
+            color: #fbbf24;
+            background-color: rgba(245, 158, 11, 0.1) !important;
+        }
+
+        .status-completed {
+            border-color: var(--success);
+            color: #34d399;
+            background-color: rgba(16, 185, 129, 0.1) !important;
+        }
+
+        .status-icon {
+            margin-right: 8px;
+            display: inline-block;
+        }
+
+        .log-box {
+            margin-top: 24px;
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .log-header {
+            padding: 12px 16px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .clear-logs {
+            cursor: pointer;
+            color: var(--accent-primary);
+        }
+
+        .clear-logs:hover {
+            text-decoration: underline;
+        }
+
+        .log-content {
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        #results-container {
+            display: none;
+            margin-top: 32px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            min-width: 600px;
+        }
+
+        th {
+            padding: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .code-cell {
+            font-family: 'Consolas', monospace;
+            color: #93c5fd;
+            word-break: break-all;
+            max-width: 250px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1 id="main-header">ArcGIS Data Explorer</h1>
+            <div id="main-subtitle" class="subtitle">Configure Feature Service filters and fetch mapping data</div>
+        </header>
+
+        <div class="form-grid">
+            <input type="hidden" id="fUrl" value="">
+
+            <!-- User Friendly Search Filters -->
+            <div class="section-title">Property Search Filters</div>
+
+            <div class="form-group full-width">
+                <label for="zipCode">Zip Code</label>
+                <input type="text" id="zipCode" placeholder="Enter 5-digit Zip Code (e.g. 46060)">
+            </div>
+
+            <div class="form-group full-width" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label for="yearCondition">Year Built Is</label>
+                    <select id="yearCondition" onchange="toggleYearInputs()">
+                        <option value="any">Any Year (Ignore)</option>
+                        <option value="exactly">Exactly</option>
+                        <option value="before">Before</option>
+                        <option value="after">After</option>
+                        <option value="between">Between</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="year1">Year</label>
+                    <input type="number" id="year1" placeholder="YYYY" min="1800" max="2030" disabled>
+                </div>
+
+                <div class="form-group" id="year2Group" style="opacity: 0.5;">
+                    <label for="year2">And Year</label>
+                    <input type="number" id="year2" placeholder="YYYY" min="1800" max="2030" disabled>
+                </div>
+            </div>
+
+            <input type="hidden" id="whereClause" value="1=1">
+
+
+            <div class="section-title">Data Output Options</div>
+
+            <div class="form-group full-width" style="margin-bottom: 8px;">
+                <label>Fields to Extract</label>
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 8px;">
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 500;">
+                        <input type="checkbox" class="out-field-cb" value="OBJECTID" checked disabled
+                            style="width: 16px; height: 16px;">
+                        OBJECTID (Required)
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--accent-primary); font-weight: 500;">
+                        <input type="checkbox" class="out-field-cb" value="*" style="width: 16px; height: 16px;"
+                            onchange="toggleAllFields(this.checked)">
+                        All Fields (*)
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="LOCADDRESS"
+                            style="width: 16px; height: 16px;">
+                        Address
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="LOCCITY" style="width: 16px; height: 16px;">
+                        City
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="LOCZIP" style="width: 16px; height: 16px;">
+                        Zip Code
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="DEEDEDOWNR"
+                            style="width: 16px; height: 16px;">
+                        Owner Name
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="DEEDACRES"
+                            style="width: 16px; height: 16px;">
+                        Parcel Acres
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="year_built"
+                            style="width: 16px; height: 16px;">
+                        Year Built
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="sq_ft_res"
+                            style="width: 16px; height: 16px;">
+                        Residential Sq Ft
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-weight: 400;">
+                        <input type="checkbox" class="out-field-cb" value="AVTOTGROSS"
+                            style="width: 16px; height: 16px;">
+                        Total Assessed Value
+                    </label>
+                </div>
+            </div>
+
+            <div class="section-title">Pagination & Limits</div>
+
+            <div class="form-group">
+                <label for="recordCount">Result Record Count</label>
+                <input type="number" id="recordCount" placeholder="50">
+            </div>
+
+
+
+        </div>
+
+        <div class="actions">
+            <button class="btn-secondary" onclick="toggleLogs()" style="margin-right: auto;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+                Debug Logs
+            </button>
+            <button class="btn-secondary" onclick="saveConfig()" id="btn-save">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                    </path>
+                </svg>
+                Save Env Variables
+            </button>
+            <span id="save-indicator"
+                style="color: var(--accent-primary); font-size: 13px; font-weight: 500; display: none; margin-left: 8px;">Saved!</span>
+
+            <button class="btn-run" onclick="runFetch()" id="btn-fetch">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Extract Data
+            </button>
+        </div>
+
+        <div id="status-area">
+            <span id="status-icon" class="status-icon"></span>
+            <span id="status-text">Idle</span>
+        </div>
+
+        <div id="log-container" class="log-box" style="display: none;">
+            <div class="log-header">
+                <span>Terminal Output</span>
+                <span class="clear-logs" onclick="document.getElementById('logs-content').innerHTML = ''">Clear</span>
+            </div>
+            <div id="logs-content" class="log-content"></div>
+        </div>
+
+        <div id="results-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="font-size: 20px; font-weight: 600; margin: 0; color: var(--text-main);">Extraction Results
+                    <span id="results-count"
+                        style="color: var(--text-secondary); font-size: 16px; font-weight: 400; margin-left: 8px;">(0)</span>
+                </h2>
+                <button class="btn-secondary" onclick="loadResults()"
+                    style="padding: 8px 16px; font-size: 13px;">Refresh Table</button>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Object ID</th>
+                            <th>Address / Location</th>
+                            <th>Google Maps</th>
+                            <th>Map Link</th>
+                            <th>Features (JSON)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadConfig);
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                const env = data.current_env;
+
+                document.getElementById('fUrl').value = env.ARCGIS_FEATURE_SERVICE_URL || '';
+                document.getElementById('recordCount').value = env.RESULT_RECORD_COUNT || '50';
+
+                // Load semantic filters
+                document.getElementById('zipCode').value = env.ZIP_CODE || '';
+                document.getElementById('yearCondition').value = env.YEAR_BUILT_CONDITION || 'any';
+                document.getElementById('year1').value = env.YEAR_BUILD_1 || '';
+                document.getElementById('year2').value = env.YEAR_BUILD_2 || '';
+
+                // Parse Out Fields into checkboxes
+                const outFieldsStr = env.DATA_OUTPUT_OPTIONS || '*';
+                const selectedFields = outFieldsStr.split(',').map(s => s.trim());
+                document.querySelectorAll('.out-field-cb').forEach(cb => {
+                    if (cb.value === 'OBJECTID') return;
+                    if (selectedFields.includes('*') || selectedFields.includes(cb.value)) {
+                        cb.checked = true;
+                    } else {
+                        cb.checked = false;
+                    }
+                });
+
+                toggleYearInputs();
+                updateWherePreview();
+
+            } catch (err) {
+                console.error("Failed to load config", err);
+            }
+        }
+
+        function toggleAllFields(isChecked) {
+            document.querySelectorAll('.out-field-cb').forEach(cb => {
+                if (cb.value !== '*' && cb.value !== 'OBJECTID') {
+                    cb.checked = isChecked;
+                }
+            });
+        }
+
+        function toggleAdvancedWhere(e) {
+            e.preventDefault();
+            const input = document.getElementById('whereClause');
+            if (input.readOnly) {
+                input.readOnly = false;
+                input.style.backgroundColor = 'var(--input-bg)';
+                input.style.color = 'var(--text-main)';
+                alert("Manual override engaged. UI Search filters will NOT be automatically applied when you save unless you lock editing again.");
+                e.target.innerText = "Lock Editing";
+            } else {
+                input.readOnly = true;
+                input.style.backgroundColor = 'rgba(0,0,0,0.2)';
+                input.style.color = 'var(--text-secondary)';
+                e.target.innerText = "Edit Manually";
+                updateWherePreview(); // Re-apply UI fields
+            }
+        }
+
+
+
+        function toggleYearInputs() {
+            const condition = document.getElementById('yearCondition').value;
+            const y1 = document.getElementById('year1');
+            const y2 = document.getElementById('year2');
+            const y2Group = document.getElementById('year2Group');
+
+            y1.disabled = condition === 'any';
+
+            if (condition === 'between') {
+                y2.disabled = false;
+                y2Group.style.opacity = '1';
+            } else {
+                y2.disabled = true;
+                y2Group.style.opacity = '0.5';
+                y2.value = '';
+            }
+            updateWherePreview();
+        }
+
+        function updateWherePreview() {
+            // Do not auto-update if manual override is engaged
+            if (!document.getElementById('whereClause').readOnly) return;
+
+            const zip = document.getElementById('zipCode').value.trim();
+            const condition = document.getElementById('yearCondition').value;
+            const y1 = document.getElementById('year1').value;
+            const y2 = document.getElementById('year2').value;
+
+            let clauses = [];
+
+            if (zip && /^\d{5}$/.test(zip)) {
+                clauses.push(`LOCZIP = '${zip}'`);
+            }
+
+            if (condition !== 'any' && y1) {
+                if (condition === 'exactly') clauses.push(`year_built = ${y1}`);
+                if (condition === 'after') clauses.push(`year_built > ${y1}`);
+                if (condition === 'before') clauses.push(`year_built < ${y1}`);
+                if (condition === 'between' && y2) {
+                    // ArcGIS SQL Between is inclusive
+                    const min = Math.min(y1, y2);
+                    const max = Math.max(y1, y2);
+                    clauses.push(`year_built BETWEEN ${min} AND ${max}`);
+                }
+            }
+
+            const finalWhere = clauses.length > 0 ? clauses.join(' AND ') : '1=1';
+            document.getElementById('whereClause').value = finalWhere;
+        }
+
+        // Add event listeners for dynamic preview
+        document.getElementById('zipCode').addEventListener('input', updateWherePreview);
+        document.getElementById('year1').addEventListener('input', updateWherePreview);
+        document.getElementById('year2').addEventListener('input', updateWherePreview);
+
+        async function saveConfig(silent = false) {
+            updateWherePreview(); // Ensure latest state before save
+
+            let selectedOutFields = [];
+            document.querySelectorAll('.out-field-cb:checked').forEach(cb => {
+                selectedOutFields.push(cb.value);
+            });
+            let outFieldsString = selectedOutFields.includes('*') ? '*' : selectedOutFields.join(', ');
+
+            const payload = {
+                ARCGIS_FEATURE_SERVICE_URL: document.getElementById('fUrl').value,
+                ZIP_CODE: document.getElementById('zipCode').value.trim(),
+                YEAR_BUILT_CONDITION: document.getElementById('yearCondition').value,
+                YEAR_BUILD_1: document.getElementById('year1').value,
+                YEAR_BUILD_2: document.getElementById('year2').value,
+                DATA_OUTPUT_OPTIONS: outFieldsString,
+                RESULT_RECORD_COUNT: document.getElementById('recordCount').value || "50"
+            };
+
+            try {
+                const res = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Failed to save");
+
+                if (!silent) {
+                    const indicator = document.getElementById('save-indicator');
+                    indicator.style.display = 'inline';
+                    setTimeout(() => {
+                        indicator.style.display = 'none';
+                    }, 2000);
+                }
+                return true;
+            } catch (err) {
+                console.error(err);
+                if (!silent) alert("Error saving configuration!");
+                return false;
+            }
+        }
+
+        async function runFetch() {
+            await saveConfig(true);
+            const btn = document.getElementById('btn-fetch');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST'
+                });
+
+                if (res.status === 409) {
+                    alert("A process is already running.");
+                    return;
+                }
+
+                pollStatus();
+                pollLogs();
+            } catch (err) {
+                alert("Failed to start fetch.");
+                console.error(err);
+            }
+        }
+
+        let statusInterval;
+        let logInterval;
+
+        function pollStatus() {
+            clearInterval(statusInterval);
+            updateStatusUI('running');
+
+            statusInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/status');
+                    const data = await res.json();
+
+                    if (data.status !== 'running') {
+                        clearInterval(statusInterval);
+                        clearInterval(logInterval);
+                        setTimeout(pollLogsContent, 500); // one last log pull
+                        updateStatusUI(data.status);
+                        document.getElementById('btn-fetch').disabled = false;
+                        loadResults(); // Auto load results when done
+                    }
+                } catch (e) {
+                    clearInterval(statusInterval);
+                    updateStatusUI('error');
+                    document.getElementById('btn-fetch').disabled = false;
+                }
+            }, 1000);
+        }
+
+        function pollLogs() {
+            clearInterval(logInterval);
+            logInterval = setInterval(pollLogsContent, 1000);
+        }
+
+        async function pollLogsContent() {
+            try {
+                const res = await fetch('/api/logs');
+                const data = await res.json();
+                const container = document.getElementById('logs-content');
+
+                // Only update if changed
+                if (data.logs.join('\n') !== container.textContent) {
+                    container.textContent = data.logs.join('\n');
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (e) {
+                console.error("Log fetch failed", e);
+            }
+        }
+
+        function toggleLogs() {
+            const el = document.getElementById('log-container');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateStatusUI(status) {
+            const area = document.getElementById('status-area');
+            const icon = document.getElementById('status-icon');
+            const text = document.getElementById('status-text');
+
+            area.style.display = 'block';
+            area.className = '';
+
+            if (status === 'running') {
+                area.classList.add('status-running');
+                icon.innerHTML = '⏳';
+                text.textContent = 'Extraction script is running... check logs below.';
+            } else if (status === 'completed') {
+                area.classList.add('status-completed');
+                icon.innerHTML = '✅';
+                text.textContent = 'Extraction completed successfully.';
+            } else {
+                area.classList.add('status-running');
+                area.style.borderColor = 'var(--text-secondary)';
+                icon.innerHTML = 'ℹ️';
+                text.textContent = `Status: ${status}`;
+            }
+        }
+
+        async function loadResults() {
+            try {
+                const res = await fetch('/api/results');
+                const data = await res.json();
+                const features = data.features || [];
+
+                document.getElementById('results-container').style.display = 'block';
+                document.getElementById('results-count').textContent = `(${features.length})`;
+
+                const tbody = document.getElementById('results-body');
+                tbody.innerHTML = '';
+
+                if (features.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No results found or file not ready</td></tr>';
+                    return;
+                }
+
+                // Show up to 50 results
+                const displayFeatures = features.slice(0, 50);
+
+                displayFeatures.forEach(feature => {
+                    const attrs = feature.attributes || {};
+                    const objId = attrs.OBJECTID || attrs.objectid || 'N/A';
+                    const address_base = attrs.LOCADDRESS || attrs.Address || attrs.address || '';
+                    const city_base = attrs.LOCCITY || attrs.City || attrs.city || '';
+                    const zip_base = attrs.LOCZIP || attrs.Zip || attrs.zip || '';
+
+                    let fullAddress = address_base;
+                    if (city_base) fullAddress += `, ${city_base}`;
+                    if (zip_base) fullAddress += ` IN, ${zip_base}`;
+
+                    if (!fullAddress) fullAddress = 'N/A';
+
+                    // Create Google Maps link
+                    const encodedAddress = encodeURIComponent(fullAddress === 'N/A' ? objId : fullAddress);
+                    const gMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+                    const gMapsHtml = fullAddress !== 'N/A'
+                        ? `<a href="${gMapsUrl}" target="_blank" style="color: #4285F4; text-decoration: underline; font-weight: 500;">Google Maps ↗</a>`
+                        : 'N/A';
+
+                    // Create dynamic map link based on address search widget
+                    const searchAddress = `${address_base}, ${city_base}, IN ${zip_base}`;
+                    const encodedSearch = encodeURIComponent(searchAddress);
+                    const mapLinkUrl = `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:${encodedSearch}`;
+
+                    const mapLinkHtml = address_base !== ''
+                        ? `<a href="${mapLinkUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">View on Map ↗</a>`
+                        : 'No address for map link';
+
+                    // Filter out core display props from the json dump to save space
+                    const otherAttrs = {};
+                    for (let key in attrs) {
+                        if (attrs[key] !== null && !['OBJECTID', 'LOCADDRESS', 'LOCCITY', 'LOCZIP'].includes(key.toUpperCase())) {
+                            otherAttrs[key] = attrs[key];
+                        }
+                    }
+
+                    const mainTr = document.createElement('tr');
+                    mainTr.style.cursor = 'pointer';
+                    mainTr.title = 'Click to expand properties';
+                    mainTr.innerHTML = `
+                        <td><strong>${objId}</strong></td>
+                        <td>${fullAddress}</td>
+                        <td>${gMapsHtml}</td>
+                        <td>${mapLinkHtml}</td>
+                        <td style="color: var(--text-secondary); font-size: 13px;">Click to view ${Object.keys(otherAttrs).length} attributes ▼</td>
+                    `;
+
+                    const detailTr = document.createElement('tr');
+                    detailTr.style.display = 'none';
+                    detailTr.style.backgroundColor = 'rgba(0,0,0,0.2)';
+
+                    let attrsHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 16px;">';
+                    for (let key in otherAttrs) {
+                        attrsHtml += `
+                            <div>
+                                <div style="color: var(--accent-primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${key}</div>
+                                <div style="color: var(--text-main); font-weight: 500; margin-top: 2px;">${otherAttrs[key]}</div>
+                            </div>
+                        `;
+                    }
+                    attrsHtml += '</div>';
+
+                    detailTr.innerHTML = `
+                        <td colspan="5" style="padding: 0; border-top: none; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            ${attrsHtml}
+                        </td>
+                    `;
+
+                    mainTr.onclick = (e) => {
+                        // Prevent row toggle if they click the map link exactly
+                        if (e.target.tagName.toLowerCase() === 'a') return;
+
+                        if (detailTr.style.display === 'none') {
+                            detailTr.style.display = 'table-row';
+                            mainTr.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                        } else {
+                            detailTr.style.display = 'none';
+                            mainTr.style.backgroundColor = '';
+                        }
+                    };
+
+                    tbody.appendChild(mainTr);
+                    tbody.appendChild(detailTr);
+                });
+            } catch (err) {
+                console.error("Error loading results", err);
+            }
+        }
+    </script>
+</body>
+
+</html>

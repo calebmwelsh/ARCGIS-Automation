@@ -1,0 +1,9 @@
+.tmp/
+__pycache__/
+
+AGENTS.md
+notes.txt
+
+/execution/test
+/directives
+/imported
