@@ -1,12 +1,12 @@
-# ArcGIS Data Explorer
+# ArcGIS Data Explorer — Hamilton County, IN
 
-A powerful, user-friendly tool for exploring, filtering, and extracting property data from ArcGIS Feature Services. This project replaces complex SQL queries with intuitive search filters and provides direct navigation to property maps.
+A powerful, user-friendly tool for exploring, filtering, and extracting property data from ArcGIS Feature Services. Currently scoped to **Hamilton County, Indiana**. Additional counties may be added in future branches as the tooling matures.
 
 ![ArcGIS Data Explorer UI](assets/ui_screenshot.png)
 
 ## 🚀 Key Features
 
-- **Semantic Configuration**: Filter parcels by Zip Code and Year Built without writing a single line of SQL.
+- **Semantic Configuration**: Filter parcels by ZIP Code (multi-select, Hamilton County only) and Year Built without writing a single line of SQL.
 - **Web UI Control**: A modern, interactive dashboard to manage your search parameters and view results.
 - **Smart Map Integration**: 
     - **ArcGIS Experience Map**: Direct links that use the address search widget to focus on specific properties.
@@ -54,7 +54,7 @@ The project follows a **3-Layer Architecture** to ensure reliability and maintai
     Navigate to [http://localhost:8003](http://localhost:8003) in your web browser.
 
 3.  **Filter & Extract**:
-    - Select your **Zip Code** and **Year Built** criteria.
+    - Select one or more **ZIP Codes** from the Hamilton County dropdown and set **Year Built** criteria.
     - Choose the **Data Output Options** (fields to extract).
     - Click **Save Env Variables** to persist settings.
     - Click **Extract Data** to run the fetcher and view results in the table below.
@@ -69,3 +69,15 @@ The project follows a **3-Layer Architecture** to ensure reliability and maintai
 - `directives/`: SOPs and workflow documentation.
 
 ---
+
+## 🗺 County Coverage
+
+| County | State | Status |
+|---|---|---|
+| Hamilton County | Indiana | ✅ Active |
+| *(additional counties)* | Indiana / Other | 🔜 Planned |
+
+> **Note:** This branch is dedicated to Hamilton County, IN, which is entirely within Indiana — no state filter is needed. Future branches or configuration profiles may extend support to neighboring counties (Boone, Madison, Tipton, etc.) or other states as needed.
+
+---
+*Created with ❤️ by Antigravity*

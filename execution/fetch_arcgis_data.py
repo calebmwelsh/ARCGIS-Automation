@@ -19,7 +19,8 @@ def fetch_arcgis_data():
         print("Error: ARCGIS_FEATURE_SERVICE_URL is not set.")
         return
         
-    zip_code = os.environ.get('ZIP_CODE', '').strip()
+    zip_code_str = os.environ.get('ZIP_CODE', '').strip()
+    zip_codes = [z.strip() for z in zip_code_str.split(',')] if zip_code_str else []
     year_condition = os.environ.get('YEAR_BUILT_CONDITION', 'any')
     year1 = os.environ.get('YEAR_BUILD_1', '').strip()
     year2 = os.environ.get('YEAR_BUILD_2', '').strip()
@@ -29,8 +30,12 @@ def fetch_arcgis_data():
     
     # Reconstruct the WHERE clause from semantic inputs
     clauses = []
-    if zip_code:
-        clauses.append(f"LOCZIP = '{zip_code}'")
+    if zip_codes:
+        if len(zip_codes) == 1:
+            clauses.append(f"LOCZIP = '{zip_codes[0]}'")
+        else:
+            zip_list_str = ", ".join([f"'{z}'" for z in zip_codes])
+            clauses.append(f"LOCZIP IN ({zip_list_str})")
         
     if year_condition != 'any' and year1:
         if year_condition == 'exactly':
