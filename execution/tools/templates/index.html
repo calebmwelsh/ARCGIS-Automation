@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">ArcGIS Data Explorer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'></path><polyline points='9 22 9 12 15 12 15 22'></polyline></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -301,6 +302,51 @@
             line-height: 1.5;
         }
 
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            margin-top: 4px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+            backdrop-filter: blur(8px);
+        }
+
+        .autocomplete-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .ac-badge {
+            font-size: 10px;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 12px;
+            font-weight: 600;
+        }
+        .ac-badge.zip { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .ac-badge.city { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .ac-badge.county { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+
         #results-container {
             display: none;
             margin-top: 32px;
@@ -353,6 +399,83 @@
             word-break: break-all;
             max-width: 250px;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            margin: 10% auto;
+            padding: 24px;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            color: var(--text-main);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .close-modal {
+            color: var(--text-secondary);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-modal:hover {
+            color: var(--text-main);
+        }
+
+        .sort-option-btn {
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .sort-option-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-primary);
+        }
+
+        .sort-option-btn.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--accent-primary);
+            color: #10b981;
+        }
     </style>
 </head>
 
@@ -367,11 +490,15 @@
             <input type="hidden" id="fUrl" value="">
 
             <!-- User Friendly Search Filters -->
-            <div class="section-title">Property Search Filters</div>
+            <div class="section-title">Property Location</div>
 
-            <div class="form-group full-width">
-                <label for="zipCode">Zip Code</label>
-                <input type="text" id="zipCode" placeholder="Enter 5-digit Zip Code (e.g. 46060)">
+            <div class="form-group full-width" style="position: relative;">
+                <label for="locationSearch">Search by Location</label>
+                <input type="text" id="locationSearch" placeholder="Enter a Zip Code, City, or County (e.g. Noblesville) ..." autocomplete="off">
+                <div id="autocompleteResults" class="autocomplete-dropdown"></div>
+                <input type="hidden" id="searchScopeType" value="zip">
+                <input type="hidden" id="searchScopeValue" value="">
+                <p id="locationSelectionText" style="font-size: 13px; color: var(--accent-primary); margin-top: 8px; display: none;">Targeting: <strong id="locationSelectionName" style="color: white; margin-left: 4px;"></strong></p>
             </div>
 
             <div class="form-group full-width" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
@@ -471,7 +598,7 @@
 
             <div class="form-group">
                 <label for="recordCount">Result Record Count</label>
-                <input type="number" id="recordCount" placeholder="50">
+                <input type="number" id="recordCount" placeholder="200">
             </div>
 
 
@@ -479,7 +606,8 @@
         </div>
 
         <div class="actions">
-            <button class="btn-secondary" onclick="toggleLogs()" style="margin-right: auto;">
+            <!-- Debug logs hidden as requested but functionality preserved -->
+            <button class="btn-secondary" onclick="toggleLogs()" style="margin-right: auto; display: none;">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
@@ -500,9 +628,9 @@
             <button class="btn-run" onclick="runFetch()" id="btn-fetch">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
-                Extract Data
+                Search
             </button>
         </div>
 
@@ -525,8 +653,24 @@
                     <span id="results-count"
                         style="color: var(--text-secondary); font-size: 16px; font-weight: 400; margin-left: 8px;">(0)</span>
                 </h2>
-                <button class="btn-secondary" onclick="loadResults()"
-                    style="padding: 8px 16px; font-size: 13px;">Refresh Table</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-secondary" onclick="openSortModal()"
+                        style="padding: 8px 16px; font-size: 13px;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 4px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+                        </svg>
+                        Sort By
+                    </button>
+                    <button class="btn-secondary" onclick="exportCSV()"
+                        style="padding: 8px 16px; font-size: 13px; background-color: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.5); color: #60a5fa;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 4px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download Data
+                    </button>
+                    <button class="btn-secondary" onclick="loadResults()"
+                        style="padding: 8px 16px; font-size: 13px;">Refresh Table</button>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -547,6 +691,19 @@
         </div>
     </div>
 
+    <!-- Sort Modal -->
+    <div id="sortModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Sort Results</h2>
+                <span class="close-modal" onclick="closeSortModal()">&times;</span>
+            </div>
+            <div id="sort-options-container">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', loadConfig);
 
@@ -557,10 +714,19 @@
                 const env = data.current_env;
 
                 document.getElementById('fUrl').value = env.ARCGIS_FEATURE_SERVICE_URL || '';
-                document.getElementById('recordCount').value = env.RESULT_RECORD_COUNT || '50';
+                document.getElementById('recordCount').value = env.RESULT_RECORD_COUNT || '200';
 
                 // Load semantic filters
-                document.getElementById('zipCode').value = env.ZIP_CODE || '';
+                document.getElementById('searchScopeType').value = env.SEARCH_SCOPE_TYPE || 'zip';
+                
+                const scopeVal = env.SEARCH_SCOPE_VALUE || env.ZIP_CODE || '';
+                document.getElementById('searchScopeValue').value = scopeVal;
+                
+                if (scopeVal) {
+                    document.getElementById('locationSelectionText').style.display = 'block';
+                    document.getElementById('locationSelectionName').innerText = `${env.SEARCH_SCOPE_TYPE || 'zip'}: ${scopeVal}`;
+                }
+
                 document.getElementById('yearCondition').value = env.YEAR_BUILT_CONDITION || 'any';
                 document.getElementById('year1').value = env.YEAR_BUILD_1 || '';
                 document.getElementById('year2').value = env.YEAR_BUILD_2 || '';
@@ -629,6 +795,11 @@
                 y2Group.style.opacity = '0.5';
                 y2.value = '';
             }
+            
+            if (condition === 'any') {
+                y1.value = '';
+                y2.value = '';
+            }
             updateWherePreview();
         }
 
@@ -636,15 +807,23 @@
             // Do not auto-update if manual override is engaged
             if (!document.getElementById('whereClause').readOnly) return;
 
-            const zip = document.getElementById('zipCode').value.trim();
+            const scopeType = document.getElementById('searchScopeType').value;
+            const scopeValue = document.getElementById('searchScopeValue').value;
             const condition = document.getElementById('yearCondition').value;
             const y1 = document.getElementById('year1').value;
             const y2 = document.getElementById('year2').value;
 
             let clauses = [];
 
-            if (zip && /^\d{5}$/.test(zip)) {
-                clauses.push(`LOCZIP = '${zip}'`);
+            if (scopeValue) {
+                if (scopeType === 'zip') {
+                    clauses.push(`LOCZIP = '${scopeValue}'`);
+                } else if (scopeType === 'city') {
+                    const city = scopeValue.split('|')[0].toUpperCase();
+                    clauses.push(`UPPER(LOCCITY) = '${city}'`);
+                } else if (scopeType === 'county') {
+                    clauses.push(`[County Filter via geo_index active]`);
+                }
             }
 
             if (condition !== 'any' && y1) {
@@ -664,11 +843,87 @@
         }
 
         // Add event listeners for dynamic preview
-        document.getElementById('zipCode').addEventListener('input', updateWherePreview);
         document.getElementById('year1').addEventListener('input', updateWherePreview);
         document.getElementById('year2').addEventListener('input', updateWherePreview);
 
+        // Autocomplete JS logic
+        let debounceTimer;
+
+        document.getElementById('locationSearch').addEventListener('input', function(e) {
+            clearTimeout(debounceTimer);
+            
+            // Clear the selected scope when user starts typing something new
+            document.getElementById('searchScopeValue').value = '';
+            document.getElementById('locationSelectionText').style.display = 'none';
+            updateWherePreview();
+            
+            const query = e.target.value.trim();
+            const dropdown = document.getElementById('autocompleteResults');
+            
+            if (query.length < 2) {
+                dropdown.style.display = 'none';
+                return;
+            }
+            
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/geo/search?q=${encodeURIComponent(query)}`);
+                    if (!res.ok) {
+                        console.error("Endpoint not found. Did you restart ui_server.py?");
+                        return;
+                    }
+                    const data = await res.json();
+                    
+                    if (data.results && data.results.length > 0) {
+                        dropdown.innerHTML = '';
+                        data.results.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'autocomplete-item';
+                            div.innerHTML = `<span class="ac-badge ${item.type}">${item.type}</span><span>${item.label}</span>`;
+                            div.onclick = () => selectLocation(item);
+                            dropdown.appendChild(div);
+                        });
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.innerHTML = '<div style="padding: 12px 16px; color: var(--text-secondary); font-size: 13px;">No matching Zip, City, or County found.</div>';
+                        dropdown.style.display = 'block';
+                    }
+                } catch(err) {
+                    console.error("Autocomplete error:", err);
+                }
+            }, 300);
+        });
+
+        function selectLocation(item) {
+            document.getElementById('searchScopeType').value = item.type;
+            document.getElementById('searchScopeValue').value = item.value;
+            
+            document.getElementById('locationSearch').value = item.label;
+            document.getElementById('autocompleteResults').style.display = 'none';
+            
+            document.getElementById('locationSelectionText').style.display = 'block';
+            document.getElementById('locationSelectionName').innerText = `Bound to ${item.type} scope`;
+            
+            updateWherePreview();
+        }
+
+        // Hide dropdown on click outside
+        document.addEventListener('click', function(e) {
+            if (e.target.id !== 'locationSearch') {
+                const el = document.getElementById('autocompleteResults');
+                if (el) el.style.display = 'none';
+            }
+        });
+
         async function saveConfig(silent = false) {
+            const scopeType = document.getElementById('searchScopeType').value;
+            const scopeValue = document.getElementById('searchScopeValue').value;
+
+            if (!scopeValue) {
+                if (!silent) alert("Please search for and select a valid Zip Code, City, or County from the dropdown list first.");
+                return false;
+            }
+
             updateWherePreview(); // Ensure latest state before save
 
             let selectedOutFields = [];
@@ -679,12 +934,14 @@
 
             const payload = {
                 ARCGIS_FEATURE_SERVICE_URL: document.getElementById('fUrl').value,
-                ZIP_CODE: document.getElementById('zipCode').value.trim(),
+                SEARCH_SCOPE_TYPE: scopeType,
+                SEARCH_SCOPE_VALUE: scopeValue,
+                ZIP_CODE: scopeType === 'zip' ? scopeValue : '',
                 YEAR_BUILT_CONDITION: document.getElementById('yearCondition').value,
                 YEAR_BUILD_1: document.getElementById('year1').value,
                 YEAR_BUILD_2: document.getElementById('year2').value,
                 DATA_OUTPUT_OPTIONS: outFieldsString,
-                RESULT_RECORD_COUNT: document.getElementById('recordCount').value || "50"
+                RESULT_RECORD_COUNT: document.getElementById('recordCount').value || "200"
             };
 
             try {
@@ -811,114 +1068,425 @@
             }
         }
 
+        let currentFeatures = [];
+        let currentSortField = null;
+        let currentSortDir = 'asc';
+
         async function loadResults() {
             try {
                 const res = await fetch('/api/results');
                 const data = await res.json();
-                const features = data.features || [];
+                currentFeatures = data.features || [];
+                renderResults();
+            } catch (e) {
+                console.error("Failed to load results:", e);
+                document.getElementById('results-body').innerHTML = '<tr><td colspan="5" style="text-align:center; color: #ef4444;">Failed to load results.</td></tr>';
+            }
+        }
 
-                document.getElementById('results-container').style.display = 'block';
-                document.getElementById('results-count').textContent = `(${features.length})`;
+        function renderResults() {
+            const features = currentFeatures;
+            document.getElementById('results-container').style.display = 'block';
+            document.getElementById('results-count').textContent = `(${features.length})`;
 
-                const tbody = document.getElementById('results-body');
-                tbody.innerHTML = '';
+            const tbody = document.getElementById('results-body');
+            tbody.innerHTML = '';
 
-                if (features.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No results found or file not ready</td></tr>';
-                    return;
+            if (features.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No results found or file not ready</td></tr>';
+                return;
+            }
+
+            // Apply Sort
+            let displayFeatures = [...features];
+            if (currentSortField) {
+                displayFeatures.sort((a, b) => {
+                    let valA = a.attributes[currentSortField];
+                    let valB = b.attributes[currentSortField];
+                    
+                    // Handle nulls
+                    if (valA === null || valA === undefined) return currentSortDir === 'asc' ? 1 : -1;
+                    if (valB === null || valB === undefined) return currentSortDir === 'asc' ? -1 : 1;
+                    
+                    if (typeof valA === 'string' && typeof valB === 'string') {
+                        return currentSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    } else if (typeof valA === 'number' && typeof valB === 'number') {
+                        return currentSortDir === 'asc' ? valA - valB : valB - valA;
+                    }
+                    return 0; // Fallback
+                });
+            }
+
+            // Show up to 100 results (or more, but keep it performant for DOM)
+            displayFeatures = displayFeatures.slice(0, 100); 
+
+            // Identify all unique attributes across the features to ensure a static layout
+            const allAttributeKeys = new Set();
+            displayFeatures.forEach(f => {
+                if (f.attributes) {
+                    Object.keys(f.attributes).forEach(k => allAttributeKeys.add(k));
+                }
+            });
+            const sortedAttributeKeys = Array.from(allAttributeKeys).sort();
+
+            displayFeatures.forEach(feature => {
+                const attrs = feature.attributes || {};
+                const objId = attrs.OBJECTID || attrs.objectid || attrs.FID || 'N/A';
+                
+                // Use standardized fields injected by fetch_arcgis_data.py
+                const address_base = attrs.std_address || '';
+                const state_abbrev = attrs.std_state || 'IN'; // Fallback to IN if not present
+                const report_url = attrs.std_property_report_url;
+                
+                // For legacy display if std fields are missing (though they shouldn't be now)
+                const city_base = attrs.LOCCITY || attrs.City || attrs.city || '';
+                const zip_base = attrs.LOCZIP || attrs.Zip || attrs.zip || '';
+
+                let fullAddress = address_base;
+                if (city_base) fullAddress += `, ${city_base}`;
+                if (state_abbrev) fullAddress += ` ${state_abbrev}`;
+                if (zip_base) fullAddress += `, ${zip_base}`;
+
+                if (!fullAddress || fullAddress === ' ') fullAddress = 'N/A';
+
+                // Create Google Maps link
+                const encodedAddress = encodeURIComponent(fullAddress === 'N/A' ? objId : fullAddress);
+                const gMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+                const gMapsHtml = fullAddress !== 'N/A'
+                    ? `<a href="${gMapsUrl}" target="_blank" style="color: #4285F4; text-decoration: underline; font-weight: 500;">Google Maps ↗</a>`
+                    : 'N/A';
+
+                // Create dynamic map links
+                let mapLinkHtml = '';
+                if (report_url) {
+                    // PRIORITY 1: Direct official property report URL (e.g. Beacon, BeaconSite, qPublic)
+                    mapLinkHtml = `<a href="${report_url}" target="_blank" style="color: #10b981; text-decoration: underline; font-weight: 600;">Property Report ↗</a>`;
+                } else if (state_abbrev === 'IN') {
+                    // PRIORITY 2: Indiana-specific Experience Map (Searchable by address)
+                    const searchAddress = `${address_base}, ${city_base}, IN ${zip_base}`.trim();
+                    const mapLinkUrl = searchAddress.length > 10 
+                        ? `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:${encodeURIComponent(searchAddress)}`
+                        : `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f`;
+
+                    mapLinkHtml = `<a href="${mapLinkUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">Experience Map ↗</a>`;
+                } else {
+                    // PRIORITY 3: For other states, if no direct report exists, Google Maps is the primary reference
+                    mapLinkHtml = `<span style="color: var(--text-secondary); font-size: 11px;">Use Google Maps link →</span>`;
                 }
 
-                // Show up to 50 results
-                const displayFeatures = features.slice(0, 50);
-
-                displayFeatures.forEach(feature => {
-                    const attrs = feature.attributes || {};
-                    const objId = attrs.OBJECTID || attrs.objectid || 'N/A';
-                    const address_base = attrs.LOCADDRESS || attrs.Address || attrs.address || '';
-                    const city_base = attrs.LOCCITY || attrs.City || attrs.city || '';
-                    const zip_base = attrs.LOCZIP || attrs.Zip || attrs.zip || '';
-
-                    let fullAddress = address_base;
-                    if (city_base) fullAddress += `, ${city_base}`;
-                    if (zip_base) fullAddress += ` IN, ${zip_base}`;
-
-                    if (!fullAddress) fullAddress = 'N/A';
-
-                    // Create Google Maps link
-                    const encodedAddress = encodeURIComponent(fullAddress === 'N/A' ? objId : fullAddress);
-                    const gMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-                    const gMapsHtml = fullAddress !== 'N/A'
-                        ? `<a href="${gMapsUrl}" target="_blank" style="color: #4285F4; text-decoration: underline; font-weight: 500;">Google Maps ↗</a>`
-                        : 'N/A';
-
-                    // Create dynamic map link based on address search widget
-                    const searchAddress = `${address_base}, ${city_base}, IN ${zip_base}`;
-                    const encodedSearch = encodeURIComponent(searchAddress);
-                    const mapLinkUrl = `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:${encodedSearch}`;
-
-                    const mapLinkHtml = address_base !== ''
-                        ? `<a href="${mapLinkUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">View on Map ↗</a>`
-                        : 'No address for map link';
-
-                    // Filter out core display props from the json dump to save space
-                    const otherAttrs = {};
-                    for (let key in attrs) {
-                        if (attrs[key] !== null && !['OBJECTID', 'LOCADDRESS', 'LOCCITY', 'LOCZIP'].includes(key.toUpperCase())) {
-                            otherAttrs[key] = attrs[key];
-                        }
-                    }
-
-                    const mainTr = document.createElement('tr');
-                    mainTr.style.cursor = 'pointer';
-                    mainTr.title = 'Click to expand properties';
-                    mainTr.innerHTML = `
-                        <td><strong>${objId}</strong></td>
-                        <td>${fullAddress}</td>
-                        <td>${gMapsHtml}</td>
-                        <td>${mapLinkHtml}</td>
-                        <td style="color: var(--text-secondary); font-size: 13px;">Click to view ${Object.keys(otherAttrs).length} attributes ▼</td>
-                    `;
-
-                    const detailTr = document.createElement('tr');
-                    detailTr.style.display = 'none';
-                    detailTr.style.backgroundColor = 'rgba(0,0,0,0.2)';
-
-                    let attrsHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 16px;">';
-                    for (let key in otherAttrs) {
-                        attrsHtml += `
-                            <div>
-                                <div style="color: var(--accent-primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${key}</div>
-                                <div style="color: var(--text-main); font-weight: 500; margin-top: 2px;">${otherAttrs[key]}</div>
-                            </div>
-                        `;
-                    }
-                    attrsHtml += '</div>';
-
-                    detailTr.innerHTML = `
-                        <td colspan="5" style="padding: 0; border-top: none; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            ${attrsHtml}
-                        </td>
-                    `;
-
-                    mainTr.onclick = (e) => {
-                        // Prevent row toggle if they click the map link exactly
-                        if (e.target.tagName.toLowerCase() === 'a') return;
-
-                        if (detailTr.style.display === 'none') {
-                            detailTr.style.display = 'table-row';
-                            mainTr.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                // Filter out core display props from the json dump to save space
+                const ignoreKeys = ['OBJECTID', 'LOCADDRESS', 'LOCCITY', 'LOCZIP', 'FID', 'ADDRESS', 'CITY', 'ZIP'];
+                const otherAttrs = {};
+                
+                sortedAttributeKeys.forEach(key => {
+                    if (!ignoreKeys.includes(key.toUpperCase())) {
+                        let val = attrs[key];
+                        // Empty values turn into N/A
+                        if (val === null || val === undefined || String(val).trim() === '') {
+                            otherAttrs[key] = '<span style="color:rgba(255,255,255,0.2);">N/A</span>';
                         } else {
-                            detailTr.style.display = 'none';
-                            mainTr.style.backgroundColor = '';
+                            otherAttrs[key] = val;
                         }
-                    };
-
-                    tbody.appendChild(mainTr);
-                    tbody.appendChild(detailTr);
+                    }
                 });
-            } catch (err) {
-                console.error("Error loading results", err);
+
+                const mainTr = document.createElement('tr');
+                mainTr.style.cursor = 'pointer';
+                mainTr.title = 'Click to expand properties';
+                mainTr.innerHTML = `
+                    <td><strong>${objId}</strong></td>
+                    <td>${fullAddress}</td>
+                    <td>${gMapsHtml}</td>
+                    <td>${mapLinkHtml}</td>
+                    <td style="color: var(--text-secondary); font-size: 13px;">Click to view ${Object.keys(otherAttrs).length} attributes ▼</td>
+                `;
+
+                const detailTr = document.createElement('tr');
+                detailTr.style.display = 'none';
+                detailTr.style.backgroundColor = 'rgba(0,0,0,0.2)';
+
+                let attrsHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 16px;">';
+                for (let key in otherAttrs) {
+                    attrsHtml += `
+                        <div>
+                            <div style="color: var(--accent-primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${key}</div>
+                            <div style="color: var(--text-main); font-weight: 500; margin-top: 2px;">${otherAttrs[key]}</div>
+                        </div>
+                    `;
+                }
+                attrsHtml += '</div>';
+
+                detailTr.innerHTML = `
+                    <td colspan="5" style="padding: 0; border-top: none; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        ${attrsHtml}
+                    </td>
+                `;
+
+                mainTr.onclick = (e) => {
+                    // Prevent row toggle if they click the map link exactly
+                    if (e.target.tagName.toLowerCase() === 'a') return;
+
+                    if (detailTr.style.display === 'none') {
+                        detailTr.style.display = 'table-row';
+                        mainTr.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                    } else {
+                        detailTr.style.display = 'none';
+                        mainTr.style.backgroundColor = '';
+                    }
+                };
+
+                tbody.appendChild(mainTr);
+                tbody.appendChild(detailTr);
+            });
+        }
+
+        // --- SORTING MODAL LOGIC ---
+        function openSortModal() {
+            if (currentFeatures.length === 0) return;
+            
+            const modal = document.getElementById('sortModal');
+            const container = document.getElementById('sort-options-container');
+            container.innerHTML = '';
+
+            const friendlyNames = {
+                // Core
+                'OBJECTID': 'Record ID',
+                'PARCELNO': 'Parcel Number',
+                'STPRCLNO': 'State Parcel Number',
+                'STPRCLNO_UNFORMATTED': 'Unformatted State Parcel Number',
+                'GLOBALID': 'Global ID',
+
+                // Address & Location
+                'LOCADDRESS': 'Address',
+                'LOCHSENUMR': 'House Number',
+                'LOCSTRDIR': 'Street Direction',
+                'LOCSTRNAME': 'Street Name',
+                'LOCSTRSUF': 'Street Suffix',
+                'LOCCITY': 'City',
+                'LOCZIP': 'Zip Code',
+                
+                // Ownership
+                'DEEDEDOWNR': 'Owner Name',
+                'OWNNAME': 'Owner Name',
+                'OWNADDRESS': 'Owner Address',
+                'OWNCITY': 'Owner City',
+                'OWNSTATE': 'Owner State',
+                'OWNZIP': 'Owner Zip Code',
+                
+                // Property Physical Traits
+                'YEAR_BUILT': 'Year Built',
+                'year_built': 'Year Built',
+                'SQ_FT_RES': 'Residential Sq Ft',
+                'sq_ft_res': 'Residential Sq Ft',
+                'DEEDACRES': 'Parcel Acres',
+                'acreage': 'Parcel Acres',
+                'NUM_FLOORS': 'Number of Floors',
+                'SHAPE__AREA': 'Area Size',
+                'SHAPE__Length': 'Perimeter Length',
+                'SHAPE__LENGTH': 'Perimeter Length',
+
+                // Legal & Administrative
+                'PROPCLASS': 'Property Class',
+                'PROPUSE': 'Property Use',
+                'LEGALDESC': 'Legal Description',
+                'SECTIONNO': 'Section Number',
+                'TOWNSHIP': 'Township',
+                'POLTWP': 'Political Township',
+                'RANGE': 'Range',
+                'TAXDISTNAM': 'Tax District',
+                'TAXDISTCOD': 'Tax District Code',
+                'NEIGHBORHOOD': 'Neighborhood',
+                'HOMESTEAD': 'Homestead Status',
+                'HMSTD_CODE': 'Homestead Code',
+                'CORPLIMIT': 'Corporate Limit',
+                
+                // Value & Tax
+                'AVTOTGROSS': 'Total Assessed Value',
+                'AVLAND': 'Assessed Land Value',
+                'AVIMPROVE': 'Assessed Improvement Value',
+                'AVTAXYR': 'Assessment Tax Year',
+                
+                // System & Misc
+                'EXPORTDATE': 'Export Date',
+                'LSTXFRDATE': 'Last Transfer Date',
+                'CREATED_USER': 'Created User',
+                'CREATED_DATE': 'Created Date',
+                'LAST_EDITED_USER': 'Last Edited User',
+                'LAST_EDITED_DATE': 'Last Edited Date',
+                'PROPERTYREPORT': 'Property Report Link',
+                'MAPID': 'Map ID',
+                'LAND_HOOK': 'Land Hook',
+                'LRSN': 'LRSN'
+            };
+
+            const priorityOrder = [
+                'YEAR_BUILT', 'year_built',
+                'AVTOTGROSS',
+                'DEEDACRES',
+                'SQ_FT_RES', 'sq_ft_res',
+                'DEEDEDOWNR',
+                'LOCADDRESS',
+                'LOCCITY',
+                'LOCZIP',
+                'OBJECTID'
+            ];
+            
+            // Extract all unique keys from current features
+            const allKeys = new Set();
+            currentFeatures.forEach(f => {
+                if(f.attributes) {
+                    Object.keys(f.attributes).forEach(k => allKeys.add(k));
+                }
+            });
+            
+            const keysArray = Array.from(allKeys).sort((a, b) => {
+                // Check if either is in the priority list
+                const idxA = priorityOrder.indexOf(a);
+                const idxB = priorityOrder.indexOf(b);
+                
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                
+                // Otherwise sort alphabetically by their friendly or raw names
+                const nameA = (friendlyNames[a] || a).toLowerCase();
+                const nameB = (friendlyNames[b] || b).toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+            
+            keysArray.forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = `sort-option-btn ${currentSortField === key ? 'active' : ''}`;
+                
+                // Determine if ascending or descending arrow should show
+                let arrow = '';
+                if (currentSortField === key) {
+                    arrow = currentSortDir === 'asc' ? '↑ (Low-High / A-Z)' : '↓ (High-Low / Z-A)';
+                }
+                
+                function formatUnknownKey(k) {
+                    if (!k) return k;
+                    return k.split('_').filter(w => w.length > 0).map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    ).join(' ');
+                }
+                
+                const displayName = friendlyNames[key] || formatUnknownKey(key);
+                
+                btn.innerHTML = `<span>${displayName}</span> <span style="font-size: 12px; opacity: 0.7;">${arrow}</span>`;
+                
+                btn.onclick = () => {
+                    if (currentSortField === key) {
+                        // Toggle direction
+                        currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSortField = key;
+                        currentSortDir = 'asc';
+                    }
+                    renderResults();
+                    closeSortModal();
+                };
+                container.appendChild(btn);
+            });
+            
+            // Add "Clear Sort" option
+            if (currentSortField) {
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'sort-option-btn';
+                clearBtn.style.color = '#ef4444';
+                clearBtn.style.marginTop = '16px';
+                clearBtn.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+                clearBtn.innerText = 'Clear Sort';
+                clearBtn.onclick = () => {
+                    currentSortField = null;
+                    renderResults();
+                    closeSortModal();
+                };
+                container.appendChild(clearBtn);
             }
+            
+            modal.style.display = 'block';
+        }
+
+        function closeSortModal() {
+            document.getElementById('sortModal').style.display = 'none';
+        }
+
+        // Close modal if clicked outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('sortModal');
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // --- CSV EXPORT LOGIC ---
+        function exportCSV() {
+            if (currentFeatures.length === 0) {
+                alert("No data available to export.");
+                return;
+            }
+
+            // Extract all unique headers
+            const headersSet = new Set();
+            currentFeatures.forEach(f => {
+                if(f.attributes) {
+                    Object.keys(f.attributes).forEach(k => headersSet.add(k));
+                }
+            });
+            const headers = Array.from(headersSet);
+
+            // Construct CSV string
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Add headers row
+            csvContent += headers.map(h => `"${h}"`).join(",") + "\r\n";
+            
+            // Sort features before export if a sort is active
+            let exportFeatures = [...currentFeatures];
+            if (currentSortField) {
+                exportFeatures.sort((a, b) => {
+                    let valA = a.attributes[currentSortField];
+                    let valB = b.attributes[currentSortField];
+                    if (valA === null || valA === undefined) return currentSortDir === 'asc' ? 1 : -1;
+                    if (valB === null || valB === undefined) return currentSortDir === 'asc' ? -1 : 1;
+                    if (typeof valA === 'string' && typeof valB === 'string') {
+                        return currentSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    } else if (typeof valA === 'number' && typeof valB === 'number') {
+                        return currentSortDir === 'asc' ? valA - valB : valB - valA;
+                    }
+                    return 0; 
+                });
+            }
+
+            // Add data rows
+            exportFeatures.forEach(f => {
+                const attrs = f.attributes || {};
+                const row = headers.map(header => {
+                    let cellData = attrs[header];
+                    if (cellData === null || cellData === undefined) {
+                        cellData = "";
+                    } else {
+                        // Escape quotes and wrap in quotes for robust CSV parsing
+                        cellData = String(cellData).replace(/"/g, '""');
+                    }
+                    return `"${cellData}"`;
+                });
+                csvContent += row.join(",") + "\r\n";
+            });
+
+            // Trigger download via hidden link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            
+            // Generate filename based on current target if available
+            const scopeVal = document.getElementById('searchScopeValue').value || 'export';
+            link.setAttribute("download", `arcgis_${scopeVal}_results.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
