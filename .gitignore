@@ -7,3 +7,7 @@ notes.txt
 /execution/test
 /directives
 /imported
+
+
+/.env/.env
+.env/.env
