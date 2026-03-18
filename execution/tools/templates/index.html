@@ -1135,12 +1135,12 @@
                 
                 // Use standardized fields injected by fetch_arcgis_data.py
                 const address_base = attrs.std_address || '';
-                const state_abbrev = attrs.std_state || 'IN'; // Fallback to IN if not present
+                const city_base = attrs.std_city || '';
+                const zip_base = attrs.std_zip || '';
+                const state_abbrev = attrs.std_state || 'IN';
+                const county_name = attrs.std_county || '';
+                const layer_url = attrs.std_layer_url || '';
                 const report_url = attrs.std_property_report_url;
-                
-                // For legacy display if std fields are missing (though they shouldn't be now)
-                const city_base = attrs.LOCCITY || attrs.City || attrs.city || '';
-                const zip_base = attrs.LOCZIP || attrs.Zip || attrs.zip || '';
 
                 let fullAddress = address_base;
                 if (city_base) fullAddress += `, ${city_base}`;
@@ -1149,28 +1149,52 @@
 
                 if (!fullAddress || fullAddress === ' ') fullAddress = 'N/A';
 
-                // Create Google Maps link
-                const encodedAddress = encodeURIComponent(fullAddress === 'N/A' ? objId : fullAddress);
-                const gMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-                const gMapsHtml = fullAddress !== 'N/A'
-                    ? `<a href="${gMapsUrl}" target="_blank" style="color: #4285F4; text-decoration: underline; font-weight: 500;">Google Maps ↗</a>`
-                    : 'N/A';
+                // Create Google Maps link (Always present and state-aware)
+                let gMapsUrl = 'N/A';
+                let gMapsHtml = 'N/A';
+                
+                if (fullAddress !== 'N/A' && address_base.length > 2) {
+                    const encodedAddress = encodeURIComponent(fullAddress);
+                    gMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+                    gMapsHtml = `<a href="${gMapsUrl}" target="_blank" style="color: #4285F4; text-decoration: underline; font-weight: 500;">Google Maps ↗</a>`;
+                } else if (attrs.parcel_id || attrs.PIN || attrs.PARCELNUMBER) {
+                    // Fallback to searching by Parcel ID if address is missing
+                    const pId = attrs.parcel_id || attrs.PIN || attrs.PARCELNUMBER;
+                    const searchStr = `${pId} ${county_name} ${state_abbrev}`.trim();
+                    gMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchStr)}`;
+                    gMapsHtml = `<a href="${gMapsUrl}" target="_blank" style="color: #4285F4; text-decoration: underline; font-weight: 500;">Search Parcel ID ↗</a>`;
+                }
 
                 // Create dynamic map links
                 let mapLinkHtml = '';
+                const viewer_type = attrs.std_viewer_type;
+                const viewer_id = attrs.std_viewer_id;
+
                 if (report_url) {
                     // PRIORITY 1: Direct official property report URL (e.g. Beacon, BeaconSite, qPublic)
                     mapLinkHtml = `<a href="${report_url}" target="_blank" style="color: #10b981; text-decoration: underline; font-weight: 600;">Property Report ↗</a>`;
-                } else if (state_abbrev === 'IN') {
-                    // PRIORITY 2: Indiana-specific Experience Map (Searchable by address)
-                    const searchAddress = `${address_base}, ${city_base}, IN ${zip_base}`.trim();
+                } else if (viewer_type === 'experience' && viewer_id) {
+                    // PRIORITY 2: Generalized Experience Builder link
+                    const searchAddress = `${address_base}, ${city_base}, ${state_abbrev} ${zip_base}`.trim();
                     const mapLinkUrl = searchAddress.length > 10 
-                        ? `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:${encodeURIComponent(searchAddress)}`
-                        : `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f`;
+                        ? `https://experience.arcgis.com/experience/${viewer_id}#widget_2=text:${encodeURIComponent(searchAddress)}`
+                        : `https://experience.arcgis.com/experience/${viewer_id}`;
 
+                    mapLinkHtml = `<a href="${mapLinkUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">Parcel Map ↗</a>`;
+                } else if (viewer_type === 'webapp' && viewer_id) {
+                    // PRIORITY 3: Generalized Web AppBuilder link
+                    const mapLinkUrl = `https://www.arcgis.com/apps/webappviewer/index.html?id=${viewer_id}`;
+                    mapLinkHtml = `<a href="${mapLinkUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">Parcel Map ↗</a>`;
+                } else if (county_name.includes('Hamilton') && state_abbrev === 'IN') {
+                    // PRIORITY 4: Legacy Hamiltonian fallback (Should be handled by viewer_id in profile eventually)
+                    const searchAddress = `${address_base}, ${city_base}, IN ${zip_base}`.trim();
+                    const mapLinkUrl = `https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:${encodeURIComponent(searchAddress)}`;
                     mapLinkHtml = `<a href="${mapLinkUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">Experience Map ↗</a>`;
+                } else if (layer_url) {
+                    // PRIORITY 5: Generic ArcGIS Web Map Viewer fallback 
+                    const viewerUrl = `https://www.arcgis.com/home/webmap/viewer.html?url=${encodeURIComponent(layer_url)}&source=sd`;
+                    mapLinkHtml = `<a href="${viewerUrl}" target="_blank" style="color: var(--accent-primary); text-decoration: underline;">ArcGIS Viewer ↗</a>`;
                 } else {
-                    // PRIORITY 3: For other states, if no direct report exists, Google Maps is the primary reference
                     mapLinkHtml = `<span style="color: var(--text-secondary); font-size: 11px;">Use Google Maps link →</span>`;
                 }
 

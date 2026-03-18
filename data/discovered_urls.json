@@ -2369,8 +2369,9 @@
   "moffat_county_co": {
     "county": "Moffat County",
     "state_abbrev": "CO",
-    "url": null,
-    "error": "Not found in ArcGIS Online catalog"
+    "url": "https://services.arcgis.com/nG7uHX1mi3PRD2sK/arcgis/rest/services/CountyPARCELS_3.16.26/FeatureServer",
+    "title": "CountyPARCELS_3.16.26",
+    "owner": "grantamader"
   },
   "montezuma_county_co": {
     "county": "Montezuma County",

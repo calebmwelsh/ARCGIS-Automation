@@ -116,6 +116,20 @@ def fetch_arcgis_data():
     f_val = field_map.get('total_value') or 'ASSTOT'
     f_report_url = field_map.get('property_report_url')
 
+    # Ensure all mapped fields ARE in the outFields query if they are non-null
+    if out_fields != '*':
+        requested_fields = [f.strip() for f in out_fields.split(',')]
+        # Only include fields that were explicitly found in the profile (not fallbacks)
+        explicit_mapped_fields = [
+            field_map.get('zip'), field_map.get('year_built'), field_map.get('address'),
+            field_map.get('city'), field_map.get('owner_name'), field_map.get('total_value'),
+            field_map.get('property_report_url')
+        ]
+        for f in explicit_mapped_fields:
+            if f and f not in requested_fields:
+                requested_fields.append(f)
+        out_fields = ",".join(requested_fields)
+
     # Reconstruct the WHERE clause using mapped fields
     clauses = []
     
@@ -181,13 +195,26 @@ def fetch_arcgis_data():
         
         # Standardize features for UI consumption
         state_abbrev = profile['state_abbrev'] if profile else ''
+        county_name = profile['county'] if profile else ''
+        layer_url = profile['layer_url'] if profile else ''
+        
         for feature in features:
             attrs = feature.get('attributes', {})
             # Inject standard keys
             attrs['std_address'] = str(attrs.get(f_address) or '').strip()
+            attrs['std_city'] = str(attrs.get(f_city) or '').strip()
+            attrs['std_zip'] = str(attrs.get(f_zip) or '').strip()
             attrs['std_year_built'] = attrs.get(f_year)
             attrs['std_property_report_url'] = attrs.get(f_report_url) if f_report_url else None
+            # Fallback to profile template if attribute-based URL is missing
+            if not attrs['std_property_report_url'] and profile:
+                attrs['std_property_report_url'] = profile.get('property_report_url_template')
+                
             attrs['std_state'] = state_abbrev
+            attrs['std_county'] = county_name
+            attrs['std_layer_url'] = layer_url
+            attrs['std_viewer_type'] = profile.get('viewer_type') if profile else None
+            attrs['std_viewer_id'] = profile.get('viewer_id') if profile else None
 
         with open(out_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
@@ -208,16 +235,40 @@ def fetch_arcgis_data():
             city = attrs.get(f_city, '')
             zipc = attrs.get(f_zip, '')
             state = profile['state_abbrev'] if profile else ''
+            county = profile['county'] if profile else ''
+            report_url = attrs.get('std_property_report_url')
+
+            # Generalized Map Link Generation
+            viewer_type = attrs.get('std_viewer_type')
+            viewer_id = attrs.get('std_viewer_id')
             
-            search_address = f"{address}, {city}, {state} {zipc}".strip(', ')
-            from urllib.parse import quote
-            encoded_search = quote(search_address)
-            exp_url = f"https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:{encoded_search}"
+            if report_url:
+                map_link = report_url
+            elif viewer_type == 'experience' and viewer_id:
+                search_address = f"{address}, {city}, {state} {zipc}".strip(', ')
+                from urllib.parse import quote
+                encoded_search = quote(search_address)
+                map_link = f"https://experience.arcgis.com/experience/{viewer_id}#widget_2=text:{encoded_search}"
+            elif viewer_type == 'webapp' and viewer_id:
+                # Construct Web AppBuilder link (id parameter)
+                # Note: Exact search params for Web AppBuilder vary, but id is consistent
+                map_link = f"https://www.arcgis.com/apps/webappviewer/index.html?id={viewer_id}"
+            elif 'Hamilton' in county and state == 'IN':
+                # Legacy hardcode fallback
+                search_address = f"{address}, {city}, {state} {zipc}".strip(', ')
+                from urllib.parse import quote
+                encoded_search = quote(search_address)
+                map_link = f"https://experience.arcgis.com/experience/619d96a48c8241cbad905b9e640c157f#widget_2=text:{encoded_search}"
+            elif layer_url:
+                from urllib.parse import quote
+                map_link = f"https://www.arcgis.com/home/webmap/viewer.html?url={quote(layer_url)}&source=sd"
+            else:
+                map_link = "N/A"
             
             print(f"ID: {obj_id} | Built: {year} | Value: {val_str}")
             print(f"Owner: {owner}")
             print(f"Address: {address}")
-            print(f"Map Link: {exp_url}")
+            print(f"Map Link: {map_link}")
             print("-" * 50)
 
     except requests.exceptions.RequestException as e:

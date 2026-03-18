@@ -59,6 +59,33 @@ The project follows a **3-Layer Architecture** to ensure reliability and maintai
     - Click **Save Env Variables** to persist settings.
     - Click **Extract Data** to run the fetcher and view results in the table below.
 
+## 📊 Onboarding Status
+
+This project aims for 100% attribute coverage across all US counties. "Skeleton" counties are those with verified ArcGIS URLs but zero attribute mappings.
+
+**Current Status**: 125+ Fully Mapped | 17 Skeletons Remaining
+
+### Remaining Skeletons
+To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+- **CA**: Merced County
+- **CO**: Gunnison County
+- **GA**: Madison County
+- **IA**: Franklin County
+- **ID**: Clearwater County
+- **IL**: LaSalle County
+- **LA**: St. James Parish
+- **MA**: Worcester County
+- **ME**: Aroostook County
+- **NC**: Yancey County
+- **NY**: Delaware County
+- **OH**: Defiance County, Highland County
+- **OR**: Hood River County, Wallowa County
+- **PA**: Potter County
+- **TN**: Marion County, Scott County
+- **WI**: Waupaca County
+- **WV**: Wood County
+
 ## 📂 Directory Structure
 
 - `.env/`: Configuration storage.

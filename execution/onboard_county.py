@@ -76,33 +76,97 @@ STANDARD_FIELDS = {
 # Step 1: Fetch sample records from the FeatureServer
 # ---------------------------------------------------------------------------
 def fetch_sample_records(url: str, sample_count: int = 5) -> list[dict]:
-    """Fetch a few parcel records to discover the schema."""
-    clean_url = url.rstrip("/")
-    if clean_url.endswith("FeatureServer"):
-        clean_url += "/0"
-        
-    query_url = clean_url + "/query"
-    params = {
-        "where": "1=1",
-        "outFields": "*",
-        "resultRecordCount": sample_count,
-        "f": "json",
-        "returnGeometry": "false",
+    # 1. Clean and Normalize URL
+    url = url.strip().split("?")[0].rstrip("/")
+    
+    # Normalize hostname to lowercase, keep path case
+    from urllib.parse import urlparse, urlunparse
+    parsed = urlparse(url)
+    hostname = parsed.netloc.lower()
+    path = parsed.path
+    url = urlunparse(parsed._replace(netloc=hostname))
+
+    # Detect base layer URL
+    path_segments = url.rstrip("/").split("/")
+    if path_segments[-1].isdigit():
+        base_layer_url = url
+    else:
+        if url.lower().endswith("featureserver") or url.lower().endswith("mapserver"):
+            base_layer_url = url + "/0"
+        else:
+            base_layer_url = url
+
+    # 2. Setup Headers and Params
+    verify_ssl = True
+    if 'current_args' in globals() and current_args.no_verify:
+        verify_ssl = False
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json"
     }
-    logging.info(f"Fetching {sample_count} sample records from: {query_url}")
-    resp = requests.get(query_url, params=params, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
 
-    if "error" in data:
-        raise RuntimeError(f"ArcGIS API error: {data['error']}")
+    # 3. Multi-Stage Discovery
+    # Stage A: Standard Query
+    query_url = base_layer_url + "/query"
+    params = {"f": "json", "where": "1=1", "outFields": "*", "resultRecordCount": str(sample_count), "returnGeometry": "false"}
+    
+    logging.info(f"Discovery A (Query): {query_url}")
+    try:
+        resp = requests.get(query_url, params=params, headers=headers, timeout=30, verify=verify_ssl)
+        if resp.ok:
+            data = resp.json()
+            if "features" in data and data["features"]:
+                logging.info("Schema found via A.")
+                return [f["attributes"] for f in data["features"]]
+    except: pass
 
-    features = data.get("features", [])
-    if not features:
-        raise RuntimeError("No features returned from FeatureServer. Check the URL and layer index.")
+    # Stage B: Metadata Fallback
+    logging.info(f"Discovery B (Metadata): {base_layer_url}")
+    try:
+        resp = requests.get(base_layer_url, params={"f": "json"}, headers=headers, timeout=30, verify=verify_ssl)
+        if resp.ok:
+            data = resp.json()
+            if "fields" in data:
+                logging.info("Schema found via B.")
+                return [{field["name"]: None for field in data["fields"]}]
+    except: pass
 
-    logging.info(f"Retrieved {len(features)} sample records. Fields: {len(features[0]['attributes'])} total.")
-    return [f["attributes"] for f in features]
+    # Stage C: Alternate Capitalization
+    alt_url = url
+    if "/arcgis/" in alt_url: alt_url = alt_url.replace("/arcgis/", "/ArcGIS/")
+    elif "/ArcGIS/" in alt_url: alt_url = alt_url.replace("/ArcGIS/", "/arcgis/")
+    
+    if alt_url != url:
+        logging.info(f"Discovery C (Alt Case): {alt_url}")
+        try:
+            resp = requests.get(alt_url, params={"f": "json"}, headers=headers, timeout=30, verify=verify_ssl)
+            if resp.ok:
+                data = resp.json()
+                if "fields" in data:
+                    logging.info("Schema found via C.")
+                    return [{field["name"]: None for field in data["fields"]}]
+        except: pass
+
+    # Discovery D: Try Service level
+    service_url = base_layer_url.rsplit("/", 1)[0] if base_layer_url[-1].isdigit() else base_layer_url
+    logging.info(f"Discovery D (Service): {service_url}")
+    try:
+        resp = requests.get(service_url, params={"f": "json"}, headers=headers, timeout=30, verify=verify_ssl)
+        if resp.ok:
+            data = resp.json()
+            if "layers" in data:
+                logging.info("Service found via D. Confirming layer...")
+                target_id = path_segments[-1] if path_segments[-1].isdigit() else "0"
+                for l in data["layers"]:
+                    if str(l.get("id")) == target_id:
+                        if "fields" in l:
+                            return [{field["name"]: None for field in l["fields"]}]
+    except: pass
+
+    raise RuntimeError(f"All schema discovery stages failed for {url}")
 
 
 # ---------------------------------------------------------------------------
@@ -253,9 +317,7 @@ Return ONLY a valid JSON object like this (no explanation, no markdown, just JSO
     )
 
     config = types.GenerateContentConfig(
-        max_output_tokens=2000,
         temperature=0.1,  # Low temperature — we want deterministic field mapping
-        response_mime_type="application/json",
         system_instruction=system_instruction,
     )
 
@@ -278,7 +340,7 @@ Return ONLY a valid JSON object like this (no explanation, no markdown, just JSO
                 raise ValueError(f"No JSON object found in model response. Raw text: {raw_text[:300]}")
 
             result = json.loads(json_match.group())
-            logging.info("Vertex AI response received.")
+            logging.info("Vertex AI response received and parsed successfully.")
             if "notes" in result and result["notes"]:
                 logging.info(f"AI notes: {result['notes']}")
             return result.get("field_map", {})
@@ -370,10 +432,36 @@ def main():
         "--sample-count", type=int, default=5,
         help="Number of sample records to fetch for schema discovery (default: 5)"
     )
+    parser.add_argument(
+        "--print-sample", action="store_true",
+        help="Print sample records and exit"
+    )
+    parser.add_argument(
+        "--field-map-json",
+        help="Provide the field map as a JSON string (bypasses AI)"
+    )
+    parser.add_argument(
+        "--no-verify", action="store_true",
+        help="Disable SSL certificate verification"
+    )
+    parser.add_argument(
+        "--layer", type=int,
+        help="Explicitly specify the layer index (e.g. 0)"
+    )
     args = parser.parse_args()
 
+    # Create a global args for fetch_sample_records to pick up no_verify
+    global current_args
+    current_args = args
+
     # 1. Fetch sample records
-    sample_records = fetch_sample_records(args.url, sample_count=args.sample_count)
+    target_url = args.url
+    if args.layer is not None:
+        target_url = args.url.rstrip("/")
+        if not target_url.endswith(str(args.layer)):
+             target_url += f"/{args.layer}"
+
+    sample_records = fetch_sample_records(target_url, sample_count=args.sample_count)
     actual_fields = list(sample_records[0].keys())
 
     # 2. Resolve canonical county name + FIPS from geo_index
@@ -383,19 +471,43 @@ def main():
     profile_key = build_profile_key(county_info["county"], county_info["state_abbrev"])
     logging.info(f"Profile key: '{profile_key}'")
 
-    # 4. AI field mapping
-    raw_field_map = infer_field_map_via_ai(sample_records, county_info["county"], county_info["state_abbrev"])
+    if args.print_sample:
+        print("\n--- SAMPLE RECORDS ---")
+        print(json.dumps(sample_records, indent=2))
+        return
+
+    # 4. Field mapping (AI or Manual)
+    if args.field_map_json:
+        logging.info("Using provided manual field map JSON.")
+        raw_field_map = json.loads(args.field_map_json)
+    else:
+        # 4. AI field mapping
+        raw_field_map = infer_field_map_via_ai(sample_records, county_info["county"], county_info["state_abbrev"])
 
     # 5. Validate field names
     validated_field_map = validate_field_map(raw_field_map, actual_fields)
 
     # 6. Assemble the full profile
+    # Determine the final layer URL used for fetching
+    clean_base = args.url.split("?")[0].rstrip("/")
+    if clean_base.endswith("/query"):
+        clean_base = clean_base[:-6].rstrip("/")
+    
+    if args.layer is not None:
+        final_layer_url = f"{clean_base}/{args.layer}"
+    else:
+        # If no layer was specified, use the cleaned base (which might have had /0 added in fetch_sample_records)
+        # But we want to be consistent. Let's re-derive what fetch_sample_records does.
+        final_layer_url = clean_base
+        if final_layer_url.endswith("FeatureServer") or final_layer_url.endswith("MapServer"):
+            final_layer_url += "/0"
+
     profile = {
         "county": county_info["county"],
         "county_fips": county_info["county_fips"],
         "state": county_info["state"],
         "state_abbrev": county_info["state_abbrev"],
-        "layer_url": args.url.rstrip("/"),
+        "layer_url": final_layer_url,
         "zip_codes": county_info.get("zips", []),
         "field_map": validated_field_map,
     }
